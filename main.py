@@ -168,7 +168,7 @@ def leader_loop():
         last_run = time.time()
 
 # --- main ---------------------------------------------------------------------
-if __name__ == "__main__":
+def main():
     print(f"node_id={node_id}")
     tcp_port_holder = []
     threading.Thread(target=tcp_server, args=(tcp_port_holder,), daemon=True).start()
@@ -183,4 +183,7 @@ if __name__ == "__main__":
     try:
         while True: time.sleep(3600)
     except KeyboardInterrupt:
-        sys.exit(0)
+        sys.exit(0)    
+
+if __name__ == "__main__":
+    main()
