@@ -7,21 +7,18 @@ HELLO_INTERVAL = 1.0
 PEER_TTL = 4.0  # seconds before a peer is considered dead
 
 JOB_EVERY = 10.0
-JOB_N = 3_000_000  # total numbers [0, N) to sum squares over (adjust if slow)
+JOB_N = 30_000_000  # total numbers [0, N) to sum squares over (adjust if slow)
 
 node_id = str(uuid.uuid4())
 peers = {}  # node_id -> {'addr': (ip, tcp_port), 'last': time.time()}
 peers_lock = threading.Lock()
+tcp_port_holder = []
 
 # --- TCP worker server (handles jobs) ----------------------------------------
 def sum_squares(start, end):
     # sum of k^2, start <= k < end (chunked to avoid Python sum overhead)
     # use formula for speed, but keep chunk behavior to show "distributed" work:
-    def f(n): return n*(n+1)*(2*n+1)//6
-    # sum_{k=start}^{end-1} k^2 = f(end-1) - f(start-1)
-    if start == 0:
-        return f(end-1)
-    return f(end-1) - f(start-1)
+    return sum(i * i for i in range(start, end))
 
 def handle_conn(conn, addr):
     try:
@@ -151,6 +148,7 @@ def leader_loop():
         # Map node list to ranges in a stable order
         node_items = sorted(nodes.items(), key=lambda x: x[0])
         results = []
+        job_start = time.time()
         for (pid, info), (a,b) in zip(node_items, chunks):
             ip, port = info["addr"]
             if pid == node_id:
@@ -160,17 +158,18 @@ def leader_loop():
                 r = send_job(ip, port, job_id, a, b)
             results.append(r)
             print(f"  chunk {a}:{b} from {pid[:8]} -> {r}")
+        job_finish = time.time()
         total = sum(results)
         # Verification against formula:
         formula = (JOB_N-1)*JOB_N*(2*JOB_N-1)//6 if JOB_N>0 else 0
         ok = "OK" if total == formula else f"MISMATCH (expected {formula})"
         print(f"[leader] total={total}  {ok}\n")
+        print(f"[leader] total_interval={job_finish-job_start:.2f}s")
         last_run = time.time()
 
 # --- main ---------------------------------------------------------------------
 def main():
     print(f"node_id={node_id}")
-    tcp_port_holder = []
     threading.Thread(target=tcp_server, args=(tcp_port_holder,), daemon=True).start()
     # Wait until TCP port known
     while not tcp_port_holder: time.sleep(0.01)
