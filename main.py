@@ -7,7 +7,7 @@ HELLO_INTERVAL = 1.0
 PEER_TTL = 4.0  # seconds before a peer is considered dead
 
 JOB_EVERY = 10.0
-JOB_N = 30_000_000  # total numbers [0, N) to sum squares over (adjust if slow)
+JOB_N = 3_000_000  # total numbers [0, N) to sum squares over (adjust if slow)
 
 node_id = str(uuid.uuid4())
 peers = {}  # node_id -> {'addr': (ip, tcp_port), 'last': time.time()}
